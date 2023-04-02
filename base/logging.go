@@ -31,3 +31,10 @@ func (mw loggingMiddleware) Authenticate(ctx context.Context, req model.Authenti
 	}(time.Now())
 	return mw.next.Authenticate(ctx, req)
 }
+
+func (mw loggingMiddleware) CreateUserProfile(ctx context.Context, req model.CreateUserProfileRequest) (res model.User, err error) {
+	defer func(begin time.Time) {
+		mw.logger.Log("method", "create user profile", "took", time.Since(begin), "err", err)
+	}(time.Now())
+	return mw.next.CreateUserProfile(ctx, req)
+}
