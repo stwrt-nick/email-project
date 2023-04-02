@@ -4,6 +4,7 @@ import (
 	"context"
 	"email-project/model"
 	"errors"
+	"fmt"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/bcrypt"
@@ -25,6 +26,7 @@ func (s *baseService) Authenticate(ctx context.Context, req model.AuthenticateRe
 	// TODO: Implement authentication logic here
 	// For example, check if the username and password match a record in your database
 	// Hash the password before comparing it to the stored hash
+	fmt.Println("hello")
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return res, err

@@ -12,9 +12,12 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
 func main() {
@@ -24,6 +27,24 @@ func main() {
 	)
 	flag.Parse()
 
+	ruslogger := logrus.New()
+	ruslogger.SetLevel(logrus.ErrorLevel)
+
+	// Load environment variables from .env file
+	err := godotenv.Load()
+	if err != nil {
+		ruslogger.Error("error loading .env file")
+	}
+
+	// Access environment variables
+	dbUsername := os.Getenv("DB_USERNAME")
+	dbPassword := os.Getenv("DB_PASSWORD")
+	dbClusterInfo := os.Getenv("DB_CLUSTER_INFO")
+
+	// Use environment variables
+	dbUrl := fmt.Sprintf("mongodb+srv://%s:%s@%s", dbUsername, dbPassword, dbClusterInfo)
+	// ...
+
 	var logger log.Logger
 	{
 		logger = log.NewLogfmtLogger(os.Stderr)
@@ -31,33 +52,42 @@ func main() {
 		logger = log.With(logger, "caller", log.DefaultCaller)
 	}
 
-	ruslogger := logrus.New()
-	ruslogger.SetLevel(logrus.ErrorLevel)
-
 	// db setup
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	db, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017"))
+	client, err := mongo.NewClient(options.Client().ApplyURI(dbUrl))
 	if err != nil {
-		ruslogger.Error("unable to connect to mongodb")
+		ruslogger.Error("unable to setup new mongodb client")
 	}
-
-	// Check the connection
-	err = db.Ping(ctx, nil)
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	err = client.Connect(ctx)
 	if err != nil {
-		ruslogger.Error("unable to connect to mongodb")
+		ruslogger.Error("unable to connect to mongodb client")
 	}
+	defer client.Disconnect(ctx)
+	err = client.Ping(ctx, readpref.Primary())
+	if err != nil {
+		ruslogger.Error("unable to ping mongodb client")
+	}
+	databases, err := client.ListDatabaseNames(ctx, bson.M{})
+	if err != nil {
+		ruslogger.Error("unable to list mongodb client")
+	}
+	usersCollection := client.Database("authenticate-db").Collection("email-project")
 
-	defer func() {
-		if err := db.Disconnect(ctx); err != nil {
-			ruslogger.Error("db disconnected")
-		}
-	}()
+	user := bson.D{{"fullName", "User 1"}, {"age", 30}}
+	// insert the bson object using InsertOne()
+	result, err := usersCollection.InsertOne(context.TODO(), user)
+	// check for errors in the insertion
+	if err != nil {
+		panic(err)
+	}
+	// display the id of the newly inserted object
+	fmt.Println(result.InsertedID)
+
+	fmt.Println(databases)
 
 	var s base.Service
 	{
-		s = base.NewService(*db)
+		s = base.NewService(*client)
 		s = base.LoggingMiddleware(logger)(s)
 	}
 

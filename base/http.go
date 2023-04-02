@@ -36,7 +36,7 @@ func encodeAuthenticateResponse(_ context.Context, w http.ResponseWriter, respon
 }
 
 func decodeAuthenticationRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	var request model.AddPostRequest
+	var request model.AuthenticateRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		return nil, err
 	}
