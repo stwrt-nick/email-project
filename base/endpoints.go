@@ -10,12 +10,14 @@ import (
 type Endpoints struct {
 	AuthenticateEndpoint      endpoint.Endpoint
 	CreateUserProfileEndpoint endpoint.Endpoint
+	CreateUserEndpoint        endpoint.Endpoint
 }
 
 func MakeServerEndpoints(s Service) Endpoints {
 	return Endpoints{
 		AuthenticateEndpoint:      makeAuthenticateEndpoint(s),
 		CreateUserProfileEndpoint: makeCreateUserProfileEndpoint(s),
+		CreateUserEndpoint:        makeCreateUserEndpoint(s),
 	}
 }
 
@@ -35,8 +37,19 @@ func makeCreateUserProfileEndpoint(s Service) endpoint.Endpoint {
 		req := request.(model.CreateUserProfileRequest)
 		res, err := s.CreateUserProfile(ctx, req)
 		if err != nil {
-			return model.User{0, "", ""}, nil
+			return model.UserPage{0, "", ""}, nil
 		}
-		return model.User{res.ID, res.Name, res.Email}, nil
+		return model.UserPage{res.ID, res.Name, res.Email}, nil
+	}
+}
+
+func makeCreateUserEndpoint(s Service) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		req := request.(model.CreateUserRequest)
+		token, err := s.CreateUser(ctx, req)
+		if err != nil {
+			return model.CreateUserResponse{Err: err.Error()}, nil
+		}
+		return model.CreateUserResponse{Token: token.Token, Err: token.Err}, nil
 	}
 }

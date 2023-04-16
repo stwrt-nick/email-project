@@ -31,6 +31,13 @@ func MakeHTTPHandler(s Service, logger log.Logger) http.Handler {
 	r.Methods("POST").Path("/users").Handler(httptransport.NewServer(
 		e.CreateUserProfileEndpoint,
 		decodeCreateUserProfileRequest,
+		encodeCreateUserResponse,
+		options...,
+	))
+
+	r.Methods("POST").Path("/createuser").Handler(httptransport.NewServer(
+		e.CreateUserEndpoint,
+		decodeCreateUserRequest,
 		encodeCreateUserProfileResponse,
 		options...,
 	))
@@ -46,6 +53,10 @@ func encodeCreateUserProfileResponse(_ context.Context, w http.ResponseWriter, r
 	return json.NewEncoder(w).Encode(response)
 }
 
+func encodeCreateUserResponse(_ context.Context, w http.ResponseWriter, response interface{}) error {
+	return json.NewEncoder(w).Encode(response)
+}
+
 func decodeAuthenticationRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	var request model.AuthenticateRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
@@ -56,6 +67,14 @@ func decodeAuthenticationRequest(_ context.Context, r *http.Request) (interface{
 
 func decodeCreateUserProfileRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	var request model.CreateUserProfileRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		return nil, err
+	}
+	return request, nil
+}
+
+func decodeCreateUserRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	var request model.CreateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		return nil, err
 	}

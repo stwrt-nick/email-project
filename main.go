@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"email-project/base"
+	"email-project/model"
 	"flag"
 	"fmt"
 	"net/http"
@@ -14,7 +15,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -40,6 +40,8 @@ func main() {
 	dbUsername := os.Getenv("DB_USERNAME")
 	dbPassword := os.Getenv("DB_PASSWORD")
 	dbClusterInfo := os.Getenv("DB_CLUSTER_INFO")
+	dbName := os.Getenv("DB_NAME")
+	dbCollection := os.Getenv("DB_COLLECTION")
 
 	// Use environment variables
 	dbUrl := fmt.Sprintf("mongodb+srv://%s:%s@%s", dbUsername, dbPassword, dbClusterInfo)
@@ -67,27 +69,16 @@ func main() {
 	if err != nil {
 		ruslogger.Error("unable to ping mongodb client")
 	}
-	databases, err := client.ListDatabaseNames(ctx, bson.M{})
-	if err != nil {
-		ruslogger.Error("unable to list mongodb client")
+	dbInfo := model.DBInfo{
+		DBName:           dbName,
+		DBCollectionName: dbCollection,
 	}
-	usersCollection := client.Database("authenticate-db").Collection("email-project")
 
-	user := bson.D{{"fullName", "User 1"}, {"age", 30}}
-	// insert the bson object using InsertOne()
-	result, err := usersCollection.InsertOne(context.TODO(), user)
-	// check for errors in the insertion
-	if err != nil {
-		panic(err)
-	}
-	// display the id of the newly inserted object
-	fmt.Println(result.InsertedID)
-
-	fmt.Println(databases)
+	db := client.Database(dbName)
 
 	var s base.Service
 	{
-		s = base.NewService(*client)
+		s = base.NewService(*db, dbInfo)
 		s = base.LoggingMiddleware(logger)(s)
 	}
 
